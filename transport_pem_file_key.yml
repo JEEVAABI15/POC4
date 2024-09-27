@@ -1,0 +1,24 @@
+---
+- name: Setup SSH Key for Jenkins
+  hosts: your_ec2_instance
+  vars:
+    ansible_ssh_private_key_file: keydemo.pem  # Update this to the absolute path
+    ansible_user: ubuntu
+  become: true
+  tasks:
+    - name: Copy SSH key to EC2 instance
+      command: cp /my_folder/terraform/main/keydemo.pem /home/ubuntu/keydemo.pem
+      delegate_to: "{{ ansible_host }}"
+    
+    - name: Create .ssh directory in Jenkins container
+      command: docker exec jenkins mkdir -p /root/.ssh/
+    
+    - name: Copy SSH key to Jenkins container
+      command: docker cp keydemo.pem jenkins:/root/.ssh/
+    
+    - name: Change ownership of the SSH key in Jenkins container
+      command: docker exec jenkins chown jenkins:jenkins /root/.ssh/keydemo.pem
+    
+    - name: Set permissions on the SSH key in Jenkins container
+      command: docker exec jenkins chmod 400 /root/.ssh/keydemo.pem
+

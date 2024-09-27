@@ -1,0 +1,21 @@
+---
+- name: Create the multi-stage pipeline job using the Jenkins CLI
+  hosts: your_ec2_instance  # Replace with your inventory group or hostname
+  become: true  # Use sudo
+  tasks:
+    - name: Generate SonarQube token for Jenkins integration
+      shell: >
+        curl -u admin:admin123 -X POST 'http://localhost:9000/api/user_tokens/generate?name=jenkins_token_{{ ansible_date_time.iso8601 }}'
+      register: sonar_token_response
+
+    - name: Print the full JSON response
+      debug:
+        var: sonar_token_response.stdout
+
+    - name: Extract token from response
+      set_fact:
+        sonar_t: "{{ sonar_token_response.stdout | from_json | json_query('token') }}"
+
+    - debug:
+        msg: "The SonarQube token is: {{ sonar_t }}"
+
