@@ -30,18 +30,16 @@
                   }
                   stage("SonarQube Analysis") {
                       steps {
-                          withSonarQubeEnv('sonar') {
-                              script {
-                                  echo "Running SonarQube analysis"
-                                  def scannerHome = tool name: 'sonar'
-                                  sh '''
-                                  /opt/sonar-scanner/bin/sonar-scanner \
-                                  -Dsonar.projectKey=vite_project \
-                                  -Dsonar.sources=. \
-                                  -Dsonar.host.url=${SONARQUBE_URL} \
-                                  -Dsonar.login=${SONARQUBE_TOKEN}
-                                  '''
-                              }
+                          script {
+                                echo "Running SonarQube analysis"
+              
+                                sh '''
+                                /opt/sonar-scanner/bin/sonar-scanner \
+                                -Dsonar.projectKey=vite_project \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=${SONARQUBE_URL} \
+                                -Dsonar.login=${SONARQUBE_TOKEN}
+                                '''
                           }
                       }
                   }
@@ -62,26 +60,17 @@
                           }
                       }
                   }
-                  stage("Move Files to VM for Apache Hosting") {
-                      steps {
-                          script {
-                              echo "Moving build files to /var/www/html on AWS VM"
-                              sh '''
-                              scp -r * ${VM_SSH}:/var/www/html
-                              '''
-                          }
+                  stage("Move to Volume Mounted Location") {
+                    steps {
+                      script {
+                        echo "Move to Volume Mounted Location"
+                        sh '''
+                        # Copy files from the Jenkins workspace to /tmp/html
+                        cp -r $WORKSPACE/* /tmp/html
+                        '''
                       }
-                  }
-                  stage("Restart Apache2 Service") {
-                      steps {
-                          script {
-                              echo "Restarting Apache2 on AWS VM"
-                              sh '''
-                              ssh ${VM_SSH} "sudo systemctl restart apache2"
-                              '''
-                          }
-                      }
-                  }
+                    }
+                  }  
               }
           }
           </script>
@@ -100,6 +89,15 @@
     - name: Start Jenkins Docker container
       command: sudo docker restart jenkins
       register: jenkins_restart_output
+
+    - name: Create the directory inside the Jenkins container
+      command: sudo docker exec jenkins mkdir -p /tmp/html
+
+    - name: Change ownership to the Jenkins user
+      command: sudo docker exec jenkins chown -R jenkins:jenkins /tmp/html
+
+    - name: Set permissions
+      command: sudo docker exec jenkins chmod -R 755 /tmp/html
 
     - name: Display Jenkins restart output
       debug:
@@ -143,3 +141,4 @@
 
     - debug:
         var: console_output.stdout
+
